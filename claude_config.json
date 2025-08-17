@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "mcp-task-server": {
+      "command": "python",
+      "args": ["/home/sanzad/git/mcp/main.py"],
+      "env": {
+        "DATABASE_URL": "postgresql://mcp_user:mcp_password@localhost:5432/mcp_tasks"
+      }
+    }
+  }
+}
