@@ -1354,6 +1354,766 @@ graph TB
 }
 ```
 
+### Cursor IDE Integration: AI-Enhanced Development
+
+Cursor IDE provides a unique integration pattern for MCP servers, focusing on **developer productivity** and **AI-assisted coding workflows**. Unlike Claude Desktop's general-purpose chat interface, Cursor embeds MCP capabilities directly into the development environment.
+
+#### **Cursor vs Claude Desktop: Key Differences**
+
+```mermaid
+graph TB
+    subgraph "Claude Desktop Usage"
+        A1["💬 Chat Interface"]
+        A2["🎯 General Productivity"]
+        A3["📋 Task Management"]
+        A4["📊 Data Analysis"]
+        A5["📧 Communication"]
+    end
+    
+    subgraph "Cursor IDE Usage"  
+        B1["⌨️ Code Editor Integration"]
+        B2["🛠️ Development Focus"]
+        B3["🔧 Code Analysis"]
+        B4["📁 Repository Management"]
+        B5["🚀 DevOps Integration"]
+    end
+    
+    subgraph "Shared MCP Server"
+        C1["🏗️ Same Protocol"]
+        C2["🔄 Same Tools"]
+        C3["💾 Same Database"]
+        C4["⚡ Different Context"]
+    end
+    
+    A1 --> C1
+    A2 --> C2
+    A3 --> C3
+    A4 --> C4
+    A5 --> C4
+    
+    B1 --> C1
+    B2 --> C2
+    B3 --> C3
+    B4 --> C4
+    B5 --> C4
+    
+    style A1 fill:#e1f5fe
+    style B1 fill:#e8f5e8
+    style C1 fill:#f3e5f5
+```
+
+**Plain English Explanation:**
+1. **Claude Desktop** uses MCP servers for general productivity tasks through a chat interface
+2. **Cursor IDE** integrates MCP servers directly into the coding environment for development-specific workflows
+3. **Same MCP Server** can serve both clients, but provides different experiences based on context
+4. **Tools adapt** to the client context - general tasks for Claude, development tasks for Cursor
+
+#### **Cursor MCP Configuration Methods**
+
+##### **Method 1: Workspace Settings (Recommended)**
+```json
+// .vscode/settings.json (works for Cursor too)
+{
+  "mcp.servers": {
+    "development-task-server": {
+      "command": "python",
+      "args": ["/home/sanzad/git/mcp/main.py"],
+      "env": {
+        "DATABASE_URL": "postgresql://dev_user:dev_pass@localhost:5432/mcp_dev_tasks",
+        "LOG_LEVEL": "DEBUG",
+        "ENVIRONMENT": "development"
+      },
+      "autoStart": true,
+      "scope": "workspace"
+    }
+  },
+  "mcp.enableContextualSuggestions": true,
+  "mcp.showInlineTools": true
+}
+```
+
+##### **Method 2: User Settings (Global)**
+```json
+// User settings for Cursor
+{
+  "mcp.servers": {
+    "global-task-server": {
+      "command": "python",
+      "args": ["/path/to/your/mcp/server/main.py"],
+      "env": {
+        "DATABASE_URL": "postgresql://user:pass@localhost:5432/mcp_tasks"
+      },
+      "scope": "global",
+      "enabledLanguages": ["python", "javascript", "typescript", "*"]
+    }
+  }
+}
+```
+
+##### **Method 3: Project-Specific Configuration**
+```yaml
+# .cursor/mcp-config.yaml
+servers:
+  task-management:
+    command: python
+    args: ["./scripts/start-mcp-server.py"]
+    environment:
+      DATABASE_URL: "${DATABASE_URL}"
+      PROJECT_ROOT: "${workspaceRoot}"
+      GIT_BRANCH: "${git.branch}"
+    triggers:
+      - fileChanged: "src/**/*.py"
+      - gitCommit: true
+      - debugStart: true
+    tools:
+      - create_task
+      - link_task_to_file
+      - generate_code_task
+      - analyze_code_complexity
+```
+
+#### **Development-Focused MCP Tools for Cursor**
+
+When your MCP server detects it's being used by Cursor IDE, you can provide development-specific tools:
+
+```python
+# Enhanced MCP server with development tools
+class DevelopmentMCPServer(MCPTaskServer):
+    """MCP server optimized for development environments."""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.client_context = "cursor"  # Detected from environment
+    
+    def _get_development_tools(self) -> List[types.Tool]:
+        """Development-specific tools for Cursor IDE."""
+        return [
+            types.Tool(
+                name="create_code_task",
+                description="Create a task linked to specific code files and lines",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string", "description": "Task title"},
+                        "file_path": {"type": "string", "description": "Related file path"},
+                        "line_number": {"type": "integer", "description": "Specific line number"},
+                        "code_snippet": {"type": "string", "description": "Relevant code snippet"},
+                        "task_type": {
+                            "type": "string",
+                            "enum": ["bug", "feature", "refactor", "test", "documentation"],
+                            "description": "Type of development task"
+                        },
+                        "complexity": {
+                            "type": "string",
+                            "enum": ["low", "medium", "high"],
+                            "description": "Estimated complexity"
+                        }
+                    },
+                    "required": ["title", "task_type"]
+                }
+            ),
+            
+            types.Tool(
+                name="analyze_code_complexity",
+                description="Analyze code complexity and suggest tasks for improvement",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "file_path": {"type": "string", "description": "File to analyze"},
+                        "include_suggestions": {
+                            "type": "boolean", 
+                            "default": True,
+                            "description": "Include improvement suggestions"
+                        }
+                    },
+                    "required": ["file_path"]
+                }
+            ),
+            
+            types.Tool(
+                name="link_commit_to_task",
+                description="Link git commits to tasks for better tracking",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "integer", "description": "Task ID"},
+                        "commit_hash": {"type": "string", "description": "Git commit hash"},
+                        "commit_message": {"type": "string", "description": "Commit message"},
+                        "files_changed": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of files changed"
+                        }
+                    },
+                    "required": ["task_id", "commit_hash"]
+                }
+            ),
+            
+            types.Tool(
+                name="generate_test_tasks",
+                description="Automatically generate testing tasks for code changes",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "file_path": {"type": "string", "description": "File that needs testing"},
+                        "functions": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Specific functions to test"
+                        },
+                        "test_types": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": ["unit", "integration", "performance", "security"]
+                            },
+                            "description": "Types of tests to create"
+                        }
+                    },
+                    "required": ["file_path"]
+                }
+            )
+        ]
+    
+    async def _handle_create_code_task(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+        """Create a development-specific task with code context."""
+        
+        # Standard task creation
+        task_args = {
+            'title': arguments['title'],
+            'description': self._build_code_description(arguments),
+            'priority': self._calculate_priority_from_complexity(arguments.get('complexity', 'medium')),
+            'tags': [arguments['task_type'], 'development']
+        }
+        
+        # Add code context to task
+        if 'file_path' in arguments:
+            task_args['tags'].append(f"file:{arguments['file_path']}")
+        
+        task = await self.db.create_task(**task_args)
+        
+        # Store code-specific metadata
+        await self._store_code_metadata(task['id'], arguments)
+        
+        result = f"🔧 **Development Task Created**\n\n"
+        result += f"**ID:** {task['id']}\n"
+        result += f"**Title:** {task['title']}\n"
+        result += f"**Type:** {arguments['task_type']}\n"
+        result += f"**Priority:** {task['priority']}\n"
+        
+        if 'file_path' in arguments:
+            result += f"**File:** `{arguments['file_path']}`\n"
+            if 'line_number' in arguments:
+                result += f"**Line:** {arguments['line_number']}\n"
+        
+        result += f"**Tags:** {', '.join(task['tags'])}\n"
+        
+        return [types.TextContent(type="text", text=result)]
+    
+    def _build_code_description(self, arguments: Dict[str, Any]) -> str:
+        """Build rich description with code context."""
+        description = []
+        
+        if 'file_path' in arguments:
+            description.append(f"**File:** `{arguments['file_path']}`")
+            
+        if 'line_number' in arguments:
+            description.append(f"**Line:** {arguments['line_number']}")
+            
+        if 'code_snippet' in arguments:
+            description.append(f"**Code:**\n```\n{arguments['code_snippet']}\n```")
+            
+        return "\n\n".join(description)
+    
+    def _calculate_priority_from_complexity(self, complexity: str) -> str:
+        """Map complexity to priority."""
+        mapping = {
+            'low': 'medium',
+            'medium': 'high', 
+            'high': 'urgent'
+        }
+        return mapping.get(complexity, 'medium')
+    
+    async def _store_code_metadata(self, task_id: int, arguments: Dict[str, Any]):
+        """Store development-specific metadata."""
+        metadata = {
+            'file_path': arguments.get('file_path'),
+            'line_number': arguments.get('line_number'),
+            'code_snippet': arguments.get('code_snippet'),
+            'task_type': arguments.get('task_type'),
+            'complexity': arguments.get('complexity')
+        }
+        
+        # Store in database (you'd need to create this table)
+        await self.db.execute_command("""
+            INSERT INTO task_code_metadata (task_id, metadata)
+            VALUES ($1, $2)
+            ON CONFLICT (task_id) DO UPDATE SET metadata = $2
+        """, task_id, json.dumps(metadata))
+```
+
+#### **Cursor-Specific Workflow Examples**
+
+##### **Workflow 1: Code Review Task Creation**
+```python
+# Cursor detects code changes and suggests task creation
+async def _handle_code_review_tasks(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+    """Create tasks for code review process."""
+    
+    file_changes = arguments.get('file_changes', [])
+    review_tasks = []
+    
+    for file_change in file_changes:
+        # Analyze the changed file
+        complexity = await self._analyze_file_complexity(file_change['path'])
+        
+        # Create review task
+        task = await self.db.create_task(
+            title=f"Review changes in {file_change['path']}",
+            description=f"Review {file_change['lines_added']} lines added, {file_change['lines_removed']} lines removed",
+            priority='high' if complexity > 0.7 else 'medium',
+            tags=['code-review', 'development', f"complexity:{complexity:.2f}"]
+        )
+        
+        review_tasks.append(task)
+    
+    result = f"📋 **Code Review Tasks Created**\n\n"
+    for i, task in enumerate(review_tasks, 1):
+        result += f"{i}. **{task['title']}** (Priority: {task['priority']})\n"
+    
+    return [types.TextContent(type="text", text=result)]
+```
+
+##### **Workflow 2: Automatic Test Task Generation**
+```python
+async def _handle_generate_test_tasks(self, arguments: Dict[str, Any]) -> List[types.TextContent]:
+    """Generate comprehensive testing tasks."""
+    
+    file_path = arguments['file_path']
+    test_types = arguments.get('test_types', ['unit'])
+    
+    # Analyze the file to understand what needs testing
+    functions = await self._extract_functions_from_file(file_path)
+    
+    test_tasks = []
+    for test_type in test_types:
+        for function in functions:
+            task = await self.db.create_task(
+                title=f"Write {test_type} tests for {function['name']}()",
+                description=self._generate_test_description(function, test_type),
+                priority=self._get_test_priority(function, test_type),
+                tags=[f'{test_type}-test', 'testing', f'function:{function["name"]}']
+            )
+            test_tasks.append(task)
+    
+    result = f"🧪 **Test Tasks Generated**\n\n"
+    result += f"Created {len(test_tasks)} test tasks for `{file_path}`\n\n"
+    
+    by_type = {}
+    for task in test_tasks:
+        test_type = task['tags'][0].replace('-test', '')
+        if test_type not in by_type:
+            by_type[test_type] = []
+        by_type[test_type].append(task)
+    
+    for test_type, tasks in by_type.items():
+        result += f"**{test_type.title()} Tests ({len(tasks)})**:\n"
+        for task in tasks:
+            result += f"• {task['title']}\n"
+        result += "\n"
+    
+    return [types.TextContent(type="text", text=result)]
+```
+
+#### **Enhanced Resource Endpoints for Development**
+
+```python
+# Development-specific resources
+@self.server.list_resources()
+async def handle_list_resources() -> List[types.Resource]:
+    """Enhanced resources for development context."""
+    base_resources = await super().handle_list_resources()
+    
+    if self.client_context == "cursor":
+        dev_resources = [
+            types.Resource(
+                uri="dev://active-branch-tasks",
+                name="Current Branch Tasks",
+                description="Tasks related to the current git branch",
+                mimeType="application/json"
+            ),
+            types.Resource(
+                uri="dev://code-complexity-report",
+                name="Code Complexity Report",
+                description="Analysis of code complexity across the project",
+                mimeType="application/json"
+            ),
+            types.Resource(
+                uri="dev://test-coverage-gaps",
+                name="Test Coverage Gaps",
+                description="Areas of code that need test coverage",
+                mimeType="application/json"
+            ),
+            types.Resource(
+                uri="dev://technical-debt-tasks",
+                name="Technical Debt Tasks",
+                description="Tasks focused on reducing technical debt",
+                mimeType="application/json"
+            )
+        ]
+        return base_resources + dev_resources
+    
+    return base_resources
+
+async def _read_dev_resource(self, uri: str) -> str:
+    """Handle development-specific resource requests."""
+    
+    if uri == "dev://active-branch-tasks":
+        # Get current git branch (would need git integration)
+        current_branch = await self._get_current_git_branch()
+        tasks = await self.db.execute_query("""
+            SELECT t.*, array_agg(tm.metadata->'file_path') as related_files
+            FROM tasks t
+            LEFT JOIN task_code_metadata tm ON t.id = tm.task_id
+            WHERE t.tags @> ARRAY[$1]
+            AND t.status != 'completed'
+            GROUP BY t.id
+            ORDER BY t.priority DESC, t.created_at DESC
+        """, f"branch:{current_branch}")
+        
+        return json.dumps({
+            "branch": current_branch,
+            "task_count": len(tasks),
+            "tasks": tasks
+        }, default=str, indent=2)
+    
+    elif uri == "dev://code-complexity-report":
+        # Analyze code complexity across the project
+        complexity_data = await self._generate_complexity_report()
+        return json.dumps(complexity_data, default=str, indent=2)
+    
+    # ... handle other dev resources
+```
+
+#### **Cursor IDE Integration Best Practices**
+
+##### **1. Context-Aware Tool Selection**
+```python
+def _get_tools_for_context(self, client_context: str, file_type: str = None) -> List[str]:
+    """Return relevant tools based on context."""
+    
+    base_tools = ["create_task", "list_tasks", "update_task_status"]
+    
+    if client_context == "cursor":
+        dev_tools = [
+            "create_code_task",
+            "analyze_code_complexity", 
+            "link_commit_to_task",
+            "generate_test_tasks"
+        ]
+        
+        if file_type == "python":
+            dev_tools.extend(["analyze_python_imports", "suggest_refactoring"])
+        elif file_type == "javascript":
+            dev_tools.extend(["check_npm_vulnerabilities", "optimize_bundle"])
+        
+        return base_tools + dev_tools
+    
+    return base_tools
+```
+
+##### **2. Intelligent Task Suggestions**
+```python
+async def _suggest_tasks_for_cursor(self, file_path: str, changes: List[str]) -> List[Dict]:
+    """Suggest relevant tasks based on code changes."""
+    
+    suggestions = []
+    
+    # Analyze the changes
+    for change in changes:
+        if "TODO" in change:
+            suggestions.append({
+                "type": "todo_task",
+                "title": f"Address TODO in {file_path}",
+                "priority": "medium",
+                "description": f"TODO found: {change.strip()}"
+            })
+        
+        if "FIXME" in change:
+            suggestions.append({
+                "type": "bug_task", 
+                "title": f"Fix issue in {file_path}",
+                "priority": "high",
+                "description": f"FIXME found: {change.strip()}"
+            })
+        
+        if any(keyword in change.lower() for keyword in ["test", "spec"]):
+            suggestions.append({
+                "type": "test_task",
+                "title": f"Update tests for {file_path}",
+                "priority": "medium", 
+                "description": "Test-related changes detected"
+            })
+    
+    return suggestions
+```
+
+##### **3. Development Metrics Integration**
+```python
+# Add development-specific metrics
+class CursorMCPMetrics:
+    """Metrics specific to development workflows."""
+    
+    def __init__(self):
+        self.code_tasks_created = 0
+        self.files_analyzed = 0
+        self.test_tasks_generated = 0
+        self.commits_linked = 0
+    
+    async def track_development_activity(self, activity_type: str, metadata: Dict):
+        """Track development-specific activities."""
+        
+        if activity_type == "code_task_created":
+            self.code_tasks_created += 1
+            
+        elif activity_type == "file_analyzed":
+            self.files_analyzed += 1
+            
+        elif activity_type == "test_task_generated":
+            self.test_tasks_generated += 1
+            
+        # Store metrics for analysis
+        await self._store_metric(activity_type, metadata)
+    
+    async def get_development_report(self) -> Dict:
+        """Generate development productivity report."""
+        return {
+            "code_tasks_created": self.code_tasks_created,
+            "files_analyzed": self.files_analyzed,
+            "test_tasks_generated": self.test_tasks_generated,
+            "commits_linked": self.commits_linked,
+            "productivity_score": self._calculate_productivity_score()
+        }
+```
+
+This comprehensive Cursor IDE integration transforms your MCP server into a powerful development companion that enhances coding workflows, automates task creation, and provides intelligent insights directly within the development environment.
+
+#### **Testing Cursor IDE Integration**
+
+To ensure your MCP server works perfectly with Cursor IDE, follow this comprehensive testing approach:
+
+##### **1. Setup Test Environment**
+```bash
+# Create a test project for Cursor integration
+mkdir cursor-mcp-test && cd cursor-mcp-test
+
+# Initialize git repository
+git init
+git config user.name "Test User"
+git config user.email "test@example.com"
+
+# Create test files
+echo "# Test Project for MCP Integration" > README.md
+mkdir src tests
+echo "def hello_world(): pass" > src/main.py
+echo "# TODO: Add comprehensive tests" > tests/test_main.py
+
+# Commit initial files
+git add . && git commit -m "Initial project setup"
+```
+
+##### **2. Configure MCP Server for Testing**
+```json
+// .vscode/settings.json
+{
+  "mcp.servers": {
+    "cursor-test-server": {
+      "command": "python",
+      "args": ["/path/to/your/mcp/main.py"],
+      "env": {
+        "DATABASE_URL": "postgresql://test_user:test_pass@localhost:5432/mcp_cursor_test",
+        "LOG_LEVEL": "DEBUG",
+        "CLIENT_CONTEXT": "cursor",
+        "PROJECT_ROOT": "${workspaceRoot}"
+      },
+      "autoStart": true,
+      "enabledLanguages": ["python", "javascript", "*"]
+    }
+  }
+}
+```
+
+##### **3. Test Development Workflows**
+```python
+# Test script: test_cursor_integration.py
+import asyncio
+import json
+from pathlib import Path
+
+async def test_cursor_workflows():
+    """Test all Cursor-specific MCP workflows."""
+    
+    test_cases = [
+        {
+            "name": "Create Code Task",
+            "tool": "create_code_task",
+            "arguments": {
+                "title": "Fix TODO in main.py",
+                "file_path": "src/main.py",
+                "line_number": 1,
+                "task_type": "bug",
+                "complexity": "low",
+                "code_snippet": "def hello_world(): pass  # TODO: implement"
+            }
+        },
+        {
+            "name": "Analyze Code Complexity", 
+            "tool": "analyze_code_complexity",
+            "arguments": {
+                "file_path": "src/main.py",
+                "include_suggestions": True
+            }
+        },
+        {
+            "name": "Generate Test Tasks",
+            "tool": "generate_test_tasks", 
+            "arguments": {
+                "file_path": "src/main.py",
+                "functions": ["hello_world"],
+                "test_types": ["unit", "integration"]
+            }
+        }
+    ]
+    
+    results = {}
+    for test_case in test_cases:
+        try:
+            # Simulate MCP tool call
+            result = await call_mcp_tool(test_case["tool"], test_case["arguments"])
+            results[test_case["name"]] = {"status": "✅ PASSED", "result": result}
+        except Exception as e:
+            results[test_case["name"]] = {"status": "❌ FAILED", "error": str(e)}
+    
+    return results
+
+# Run tests
+if __name__ == "__main__":
+    results = asyncio.run(test_cursor_workflows())
+    for test_name, result in results.items():
+        print(f"{result['status']} {test_name}")
+```
+
+##### **4. Interactive Testing Checklist**
+
+**✅ Basic Integration**
+- [ ] Cursor can discover the MCP server
+- [ ] Tools appear in Cursor's command palette
+- [ ] Server starts automatically when Cursor opens
+- [ ] Error messages are clear and actionable
+
+**✅ Development Workflows**  
+- [ ] Create code task from file context
+- [ ] Link tasks to specific code lines
+- [ ] Generate test tasks for functions
+- [ ] Analyze code complexity
+- [ ] Link git commits to tasks
+
+**✅ Context Awareness**
+- [ ] Server detects Cursor as client
+- [ ] Development-specific tools are available
+- [ ] Resources show current branch tasks
+- [ ] File types trigger appropriate tools
+
+**✅ Performance**
+- [ ] Tool calls complete within 2 seconds
+- [ ] No memory leaks during long sessions
+- [ ] Multiple concurrent requests work
+- [ ] Server handles file changes efficiently
+
+##### **5. Debugging Cursor Integration Issues**
+
+```python
+# Debug helper for Cursor MCP integration
+class CursorMCPDebugger:
+    """Debug utilities for Cursor MCP integration."""
+    
+    def __init__(self, server):
+        self.server = server
+        self.debug_log = []
+    
+    async def debug_tool_call(self, tool_name: str, arguments: dict):
+        """Debug a specific tool call."""
+        debug_info = {
+            "timestamp": datetime.now().isoformat(),
+            "tool_name": tool_name,
+            "arguments": arguments,
+            "client_context": getattr(self.server, 'client_context', 'unknown')
+        }
+        
+        try:
+            result = await self.server.handle_call_tool(tool_name, arguments)
+            debug_info["status"] = "success"
+            debug_info["result"] = result
+        except Exception as e:
+            debug_info["status"] = "error" 
+            debug_info["error"] = str(e)
+            debug_info["traceback"] = traceback.format_exc()
+        
+        self.debug_log.append(debug_info)
+        return debug_info
+    
+    def get_debug_report(self) -> str:
+        """Generate comprehensive debug report."""
+        report = "🔍 **Cursor MCP Debug Report**\n\n"
+        
+        successful_calls = [log for log in self.debug_log if log["status"] == "success"]
+        failed_calls = [log for log in self.debug_log if log["status"] == "error"]
+        
+        report += f"**Total Calls:** {len(self.debug_log)}\n"
+        report += f"**Successful:** {len(successful_calls)}\n"
+        report += f"**Failed:** {len(failed_calls)}\n\n"
+        
+        if failed_calls:
+            report += "**Failed Calls:**\n"
+            for call in failed_calls:
+                report += f"• {call['tool_name']}: {call['error']}\n"
+        
+        return report
+```
+
+##### **6. Production Readiness for Cursor**
+
+```yaml
+# cursor-production-checklist.yaml
+cursor_mcp_production:
+  configuration:
+    - workspace_specific_settings: true
+    - auto_start_enabled: true
+    - appropriate_timeouts: true
+    - debug_mode_disabled: true
+    
+  performance:
+    - tool_response_time: "< 2 seconds"
+    - memory_usage: "< 100MB"
+    - cpu_usage: "< 10% sustained"
+    - file_watch_efficiency: true
+    
+  development_features:
+    - code_task_creation: enabled
+    - git_integration: enabled
+    - test_generation: enabled
+    - complexity_analysis: enabled
+    - branch_awareness: enabled
+    
+  monitoring:
+    - tool_usage_metrics: enabled
+    - error_tracking: enabled
+    - performance_monitoring: enabled
+    - user_productivity_analytics: enabled
+```
+
+This testing framework ensures your MCP server provides a seamless, productive experience for developers using Cursor IDE.
+
 ### Docker Deployment
 
 #### **Dockerfile for Production**
